@@ -29,5 +29,13 @@ namespace PSIRSCashBook.Models
         {
             return new ApplicationDbContext();
         }
+
+        public System.Data.Entity.DbSet<PSIRSCashBook.Models.PsirsCode> PsirsCodes { get; set; }
+
+        public System.Data.Entity.DbSet<PSIRSCashBook.Models.Item> Items { get; set; }
+
+        public System.Data.Entity.DbSet<PSIRSCashBook.Models.CashBook> CashBooks { get; set; }
+
+        public System.Data.Entity.DbSet<PSIRSCashBook.Models.Staff> Staffs { get; set; }
     }
 }

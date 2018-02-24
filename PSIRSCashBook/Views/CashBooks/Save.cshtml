@@ -1,0 +1,146 @@
+﻿@model PSIRSCashBook.Models.CashBook
+
+<form id="myform" onsubmit="return false;">
+    @Html.AntiForgeryToken()
+
+
+    <div class="card">
+        <div class="card-head style-primary">
+            <header>
+                @if (Model != null && Model.CashBookId > 0)
+                {
+                    <div class="form-header  purple darken-4">
+                        <h3>
+                            <i class="fa fa-save"></i> Update Record
+                        </h3>
+                    </div>
+                }
+                else
+                {
+                    <div class="form-header  purple darken-4">
+                        <h3><i class="fa fa-save"></i> Save</h3>
+                    </div>
+                }
+            </header>
+
+        </div><!--end .card-head -->
+
+        <div class="card-body">
+
+            @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+            @if (Model != null && Model.CashBookId > 0)
+            {
+                @Html.HiddenFor(model => model.CashBookId)
+            }
+            <div class="form-group">
+                @Html.Label("Psirs Code")
+                @Html.DropDownList("PsirsCodeId", (SelectList)ViewBag.PsirsCodeId, "", new { @class = "form-control", @onchange = "getItemList()" })
+                @Html.ValidationMessageFor(model => model.PsirsCodeId, "", new { @class = "text-danger" })
+            </div>
+            <div class="form-group">
+                @Html.Label("Item Name")
+                @Html.DropDownList("ItemId", (SelectList) ViewBag.ItemId, "", new {@class = "form-control"})
+                @Html.ValidationMessageFor(model => model.ItemId, "", new { @class = "text-danger" })
+            </div>
+
+            <div class="form-group">
+                @Html.LabelFor(model => model.Payee)
+                @Html.EditorFor(model => model.Payee, new { htmlAttributes = new { @class = "form-control" } })
+                @Html.ValidationMessageFor(model => model.Payee, "", new { @class = "text-danger" })
+            </div>
+
+            <div class="form-group">
+                @Html.LabelFor(model => model.Purpose)
+                @Html.EditorFor(model => model.Purpose, new { htmlAttributes = new { @class = "form-control" } })
+                @Html.ValidationMessageFor(model => model.Purpose, "", new { @class = "text-danger" })
+            </div>
+
+            <div class="form-group">
+                @Html.LabelFor(model => model.PvCode)
+                @Html.EditorFor(model => model.PvCode, new { htmlAttributes = new { @class = "form-control" } })
+                @Html.ValidationMessageFor(model => model.PvCode, "", new { @class = "text-danger" })
+            </div>
+
+            <div class="form-group">
+                @Html.LabelFor(model => model.Amount)
+                @Html.EditorFor(model => model.Amount, new { htmlAttributes = new { @class = "form-control" } })
+                @Html.ValidationMessageFor(model => model.Amount, "", new { @class = "text-danger" })
+            </div>
+
+            <div class="form-group">
+                @Html.Label("Transaction Date")
+                @Html.EditorFor(model => model.TransactionDate, new { htmlAttributes = new { @class = "form-control" } })
+                @Html.ValidationMessageFor(model => model.TransactionDate, "", new { @class = "text-danger" })
+            </div>
+
+            <div class="md-form">
+
+                @if (Model != null && Model.CashBookId > 0)
+                {
+                    <input id="btnsubmit" type="submit" value="Update" class="btn btn-success btn-lg" />
+                }
+                else
+                {
+                    <input id="btnsubmit" type="submit" value="Save" class="btn btn-success btn-lg" />
+                }
+                <a href="#" class="btn btn-danger btn-lg" data-dismiss="modal">Cancel</a>
+            </div>
+        </div><!--end .card-body -->
+    </div><!--end .card -->
+</form>
+@*@section Scripts {
+        @Scripts.Render("~/bundles/jqueryval")
+    }*@
+
+<script type="text/javascript">
+    $("#btnsubmit").click(function () {
+
+        var data = $("#myform").serialize();
+
+        $.ajax({
+            type: "POST",
+            url: "/CashBooks/Save",
+            data: data,
+            success: function (data) {
+                if (data.status) {
+                    $('#actionsList').modal("hide");
+
+                    window.oTable.ajax.reload(); //run my_fun() ondomready
+                    toastr["success"](data.message);
+                    $('#myform')[0].reset();
+                } else {
+                    //$('#actionsList').modal("hide");
+                    toastr["error"](data.message);
+                }
+
+            }
+        });
+    });
+    function getItemList() {
+        var stateId = $("#PsirsCodeId").val();  
+        alert(stateId);
+        $.ajax
+        ({
+            url: '/CashBooks/GetItemList?codeId=' + stateId,
+            type: 'GET',
+            datatype: 'application/json',
+            contentType: 'application/json',
+           
+            success: function(result) {
+                $("#ItemId").html("");
+                $.each($.parseJSON(result),
+                    function(i, city) {
+                        $("#ItemId").append($('<option></option>').val(city.ItemId).html(city.ItemName));
+                    });
+
+            },
+            error: function() {
+                alert("Whooaaa! Something went wrong..");
+            }
+        });  
+    } 
+</script>
+
+
+
+

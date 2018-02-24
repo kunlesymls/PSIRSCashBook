@@ -1,0 +1,38 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>PSIRS | Login</title>
+
+    <link href="~/Content/AdminTemplate/css/bootstrap.min.css" rel="stylesheet">
+    <link href="~/Content/AdminTemplate/font-awesome/css/font-awesome.css" rel="stylesheet">
+
+    <link href="~/Content/AdminTemplate/css/animate.css" rel="stylesheet">
+    <link href="~/Content/AdminTemplate/css/style.css" rel="stylesheet">
+
+</head>
+
+<body class="gray-bg">
+<div class="middle-box text-center loginscreen animated fadeInDown">
+    <div>
+        
+        <h1 class="logo-name">SC</h1>
+        <h3>Welcome to PSIRS+</h3>
+        
+        @RenderBody()
+        
+        <p class="m-t"> <small>CompunetLimited &copy; @DateTime.Now.Year</small> </p>
+    </div>
+</div>
+
+<!-- Mainly scripts -->
+<script src="~/Content/AdminTemplate/js/jquery-3.1.1.min.js"></script>
+<script src="~/Content/AdminTemplate/js/bootstrap.min.js"></script>
+@RenderSection("scripts", required: false)
+
+</body>
+</html>
+

@@ -1,20 +1,21 @@
-﻿using System;
-using System.Globalization;
-using System.Linq;
-using System.Security.Claims;
-using System.Threading.Tasks;
-using System.Web;
-using System.Web.Mvc;
-using Microsoft.AspNet.Identity;
+﻿using Microsoft.AspNet.Identity;
 using Microsoft.AspNet.Identity.Owin;
 using Microsoft.Owin.Security;
 using PSIRSCashBook.Models;
+using System;
+using System.Data.Entity;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Web;
+using System.Web.Mvc;
 
 namespace PSIRSCashBook.Controllers
 {
     [Authorize]
     public class AccountController : Controller
     {
+        private readonly ApplicationDbContext _db = new ApplicationDbContext();
+
         private ApplicationSignInManager _signInManager;
         private ApplicationUserManager _userManager;
 
@@ -22,7 +23,7 @@ namespace PSIRSCashBook.Controllers
         {
         }
 
-        public AccountController(ApplicationUserManager userManager, ApplicationSignInManager signInManager )
+        public AccountController(ApplicationUserManager userManager, ApplicationSignInManager signInManager)
         {
             UserManager = userManager;
             SignInManager = signInManager;
@@ -34,9 +35,9 @@ namespace PSIRSCashBook.Controllers
             {
                 return _signInManager ?? HttpContext.GetOwinContext().Get<ApplicationSignInManager>();
             }
-            private set 
-            { 
-                _signInManager = value; 
+            private set
+            {
+                _signInManager = value;
             }
         }
 
@@ -50,6 +51,54 @@ namespace PSIRSCashBook.Controllers
             {
                 _userManager = value;
             }
+        }
+
+        public ActionResult RegisterStaff()
+        {
+            var mystates = from State s in Enum.GetValues(typeof(State))
+                           select new { ID = s, Name = s.ToString() };
+            var religion = from Religion s in Enum.GetValues(typeof(Religion))
+                           select new { ID = s, Name = s.ToString() };
+            var mygender = from Gender s in Enum.GetValues(typeof(Gender))
+                           select new { ID = s, Name = s.ToString() };
+            var maritalStatus = from Maritalstatus s in Enum.GetValues(typeof(Maritalstatus))
+                                select new { ID = s, Name = s.ToString() };
+
+            ViewBag.MaritalStatus = new SelectList(maritalStatus, "Name", "Name");
+            ViewBag.Religion = new SelectList(religion, "Name", "Name");
+            ViewBag.StateOfOrigin = new SelectList(mystates, "Name", "Name");
+            ViewBag.Gender = new SelectList(mygender, "Name", "Name");
+            return View();
+        }
+
+        [HttpPost]
+        // [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> RegisterStaff(Staff model)
+        {
+            if (ModelState.IsValid)
+            {
+                var user = new ApplicationUser { Id = model.StaffId, UserName = model.Email, Email = model.Email };
+                var result = await UserManager.CreateAsync(user, model.Password);
+                if (result.Succeeded)
+                {
+                    _db.Staffs.Add(model);
+                    await _db.SaveChangesAsync();
+                    //await SignInManager.SignInAsync(user, isPersistent: false, rememberBrowser: false);
+
+                    // For more information on how to enable account confirmation and password reset please visit https://go.microsoft.com/fwlink/?LinkID=320771
+                    // Send an email with this link
+                    // string code = await UserManager.GenerateEmailConfirmationTokenAsync(user.Id);
+                    // var callbackUrl = Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);
+                    // await UserManager.SendEmailAsync(user.Id, "Confirm your account", "Please confirm your account by clicking <a href=\"" + callbackUrl + "\">here</a>");
+
+                    return RedirectToAction("Index", "Staffs");
+                }
+                AddErrors(result);
+            }
+
+            // If we got this far, something failed, redisplay form
+            return View(model);
         }
 
         //
@@ -73,13 +122,25 @@ namespace PSIRSCashBook.Controllers
                 return View(model);
             }
 
+
+            var user = await _db.Users.AsNoTracking()
+                        .FirstOrDefaultAsync(c => c.Email.ToUpper().Equals(model.Email.ToUpper().Trim()));
+
+            if (user == null)
+            {
+                ModelState.AddModelError("", @"User doesn't Exist.");
+                TempData["UserMessage"] = $"Login Fails..., Please Check your UserName and Password Or Click on ForgetPassword";
+                TempData["Title"] = "Error.";
+                return View(model);
+            }
+
             // This doesn't count login failures towards account lockout
             // To enable password failures to trigger account lockout, change to shouldLockout: true
-            var result = await SignInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberMe, shouldLockout: false);
+            var result = await SignInManager.PasswordSignInAsync(user.Email, model.Password, model.RememberMe, shouldLockout: false);
             switch (result)
             {
                 case SignInStatus.Success:
-                    return RedirectToLocal(returnUrl);
+                    return RedirectToAction("CustomDashborad", new { username = user.UserName, returnUrl = returnUrl });
                 case SignInStatus.LockedOut:
                     return View("Lockout");
                 case SignInStatus.RequiresVerification:
@@ -90,6 +151,41 @@ namespace PSIRSCashBook.Controllers
                     return View(model);
             }
         }
+
+        public ActionResult CustomDashborad(string username, string returnUrl)
+        {
+            if (returnUrl != null)
+            {
+                return RedirectToLocal(returnUrl);
+            }
+            if (User.IsInRole("Admin"))
+            {
+                TempData["UserMessage"] = $"Login Successful, Welcome {username}";
+                TempData["Title"] = "Success.";
+                return RedirectToAction("AdminDashBoard", "Home");
+                // return RedirectToAction("AdminDashboard", "Home");
+            }
+
+            if (User.IsInRole("Operator"))
+            {
+                TempData["UserMessage"] = $"Login Successful, Welcome {username}";
+                TempData["Title"] = "Success.";
+                return RedirectToAction("OperatorDashBoard", "Home");
+            }
+
+            return RedirectToAction("Index", "Home");
+        }
+
+        // POST: /Account/LogOff
+        [HttpGet]
+        //[ValidateAntiForgeryToken]
+        public ActionResult LogOff()
+        {
+            AuthenticationManager.SignOut(DefaultAuthenticationTypes.ApplicationCookie);
+
+            return RedirectToAction("Index", "Home");
+        }
+
 
         //
         // GET: /Account/VerifyCode
@@ -120,7 +216,7 @@ namespace PSIRSCashBook.Controllers
             // If a user enters incorrect codes for a specified amount of time then the user account 
             // will be locked out for a specified amount of time. 
             // You can configure the account lockout settings in IdentityConfig
-            var result = await SignInManager.TwoFactorSignInAsync(model.Provider, model.Code, isPersistent:  model.RememberMe, rememberBrowser: model.RememberBrowser);
+            var result = await SignInManager.TwoFactorSignInAsync(model.Provider, model.Code, isPersistent: model.RememberMe, rememberBrowser: model.RememberBrowser);
             switch (result)
             {
                 case SignInStatus.Success:
@@ -155,8 +251,8 @@ namespace PSIRSCashBook.Controllers
                 var result = await UserManager.CreateAsync(user, model.Password);
                 if (result.Succeeded)
                 {
-                    await SignInManager.SignInAsync(user, isPersistent:false, rememberBrowser:false);
-                    
+                    await SignInManager.SignInAsync(user, isPersistent: false, rememberBrowser: false);
+
                     // For more information on how to enable account confirmation and password reset please visit https://go.microsoft.com/fwlink/?LinkID=320771
                     // Send an email with this link
                     // string code = await UserManager.GenerateEmailConfirmationTokenAsync(user.Id);
@@ -387,13 +483,13 @@ namespace PSIRSCashBook.Controllers
 
         //
         // POST: /Account/LogOff
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult LogOff()
-        {
-            AuthenticationManager.SignOut(DefaultAuthenticationTypes.ApplicationCookie);
-            return RedirectToAction("Index", "Home");
-        }
+        //[HttpPost]
+        //[ValidateAntiForgeryToken]
+        //public ActionResult LogOff()
+        //{
+        //    AuthenticationManager.SignOut(DefaultAuthenticationTypes.ApplicationCookie);
+        //    return RedirectToAction("Index", "Home");
+        //}
 
         //
         // GET: /Account/ExternalLoginFailure
